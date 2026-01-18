@@ -15,7 +15,7 @@ export interface NavMobileProps {
 }
 
 const NavMobile: React.FC<NavMobileProps> = ({ onClickClose }) => {
-  const { userProfile } = useAuthApi();
+  const { user, userProfile } = useAuthApi();
   
   /* eslint-disable */
   const renderMenuChild = (
@@ -103,8 +103,20 @@ const NavMobile: React.FC<NavMobileProps> = ({ onClickClose }) => {
         </div>
       </div>
       <ul className="flex flex-col space-y-5 px-5 py-6">
+        {/* Show Home link only for logged-in admin users */}
+        {user && userProfile?.admin && (
+          <li>
+            <Link
+              href="/"
+              className="flex w-full items-center rounded-lg px-4 text-sm font-medium uppercase tracking-wide hover:bg-slate-100"
+              onClick={onClickClose}
+            >
+              <span className="block w-full">Home</span>
+            </Link>
+          </li>
+        )}
         {NavLinks.map(renderItem)}
-        {userProfile?.admin && (
+        {user && userProfile?.admin && (
           <li>
             <Link
               href="/add-collection"

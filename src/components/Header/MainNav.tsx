@@ -23,10 +23,21 @@ const MainNav = () => {
       </div>
 
       <div className="hidden items-center gap-7 lg:flex">
+        {/* Show Home link only for logged-in admin users */}
+        {user && userProfile?.admin && (
+          <NavigationItem
+            key="home"
+            menuItem={{
+              id: 'home',
+              name: 'Home',
+              href: '/',
+            }}
+          />
+        )}
         {NavLinks.map((item) => (
           <NavigationItem key={item.id} menuItem={item} />
         ))}
-        {userProfile?.admin && (
+        {user && userProfile?.admin && (
           <Link
             href="/add-collection"
             className="text-sm font-medium transition-colors hover:text-primary"
@@ -52,8 +63,8 @@ const MainNav = () => {
           </Link>
         )}
 
-        {/* CartSideBar temporarily hidden */}
-        {false && <CartSideBar />}
+        {/* CartSideBar - Show only for logged-in admin users */}
+        {user && userProfile?.admin && <CartSideBar />}
       </div>
 
       <div className="lg:hidden">

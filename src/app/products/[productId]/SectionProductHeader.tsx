@@ -1,9 +1,12 @@
+'use client';
+
 import type { FC } from 'react';
 import React from 'react';
 import { MdStar } from 'react-icons/md';
 
 import ImageShowCase from '@/components/ImageShowCase';
 import SizeSelect from '@/components/SizeSelect';
+import { useAuthApi } from '@/hooks/useAuthApi';
 import { formatPrice } from '@/utils/currency';
 import ButtonPrimary from '@/shared/Button/ButtonPrimary';
 import Heading from '@/shared/Heading/Heading';
@@ -30,6 +33,8 @@ const SectionProductHeader: FC<SectionProductHeaderProps> = ({
   availableSizes,
   availableColors,
 }) => {
+  const { user, userProfile } = useAuthApi();
+  
   return (
     <div className="items-stretch justify-between space-y-10 lg:flex lg:space-y-0">
       <div className="basis-[47%]">
@@ -59,8 +64,8 @@ const SectionProductHeader: FC<SectionProductHeaderProps> = ({
           <Variant sizes="w-8 h-8" colors={availableColors} />
         </div>
 
-        {/* Buy button temporarily hidden */}
-        {false && (
+        {/* Buy button - Show only for logged-in admin users */}
+        {user && userProfile?.admin && (
           <div className="mt-5 flex items-center gap-5">
             <ButtonPrimary href="/checkout" className="w-full">
               Buy this product

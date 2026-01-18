@@ -10,11 +10,12 @@ import type { BlogType } from './types';
 const ncNanoId = _.uniqueId;
 
 const otherPageChildMenus: NavItemType[] = [
-  {
-    id: ncNanoId(),
-    href: '/',
-    name: 'Home',
-  },
+  // Home link - Hidden from dropdown menu
+  // {
+  //   id: ncNanoId(),
+  //   href: '/',
+  //   name: 'Home',
+  // },
   {
     id: ncNanoId(),
     href: '/checkout',
@@ -102,11 +103,12 @@ const otherPageChildMenus: NavItemType[] = [
 ];
 
 export const NavLinks: NavItemType[] = [
-  {
-    id: ncNanoId(),
-    name: 'Home',
-    href: '/',
-  },
+  // Home link - Hidden from main navigation
+  // {
+  //   id: ncNanoId(),
+  //   name: 'Home',
+  //   href: '/',
+  // },
   // {
   //   id: ncNanoId(),
   //   name: 'Blog',
@@ -293,7 +295,8 @@ export const footerData = {
     {
       title: 'Main Pages',
       links: [
-        { href: '/', name: 'Home' },
+        // Home link - Hidden from footer
+        // { href: '/', name: 'Home' },
         { href: '/products', name: 'Collections' },
         { href: '/cart', name: 'Cart' },
         { href: '/checkout', name: 'Checkout' },

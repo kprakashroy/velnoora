@@ -34,7 +34,16 @@ const MainNav = () => {
             }}
           />
         )}
-        {NavLinks.map((item) => (
+        {/* Filter NavLinks: Show Collections, Pages, and Contact only for logged-in admin users */}
+        {NavLinks.filter((item) => {
+          // Collections, Pages, and Contact should only show for logged-in admin users
+          if (item.name === 'Collections' || item.name === 'Pages' || item.name === 'Contact') {
+            return user && userProfile?.admin;
+          }
+          
+          // Show all other items (if any)
+          return true;
+        }).map((item) => (
           <NavigationItem key={item.id} menuItem={item} />
         ))}
         {user && userProfile?.admin && (

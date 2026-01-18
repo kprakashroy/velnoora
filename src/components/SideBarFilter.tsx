@@ -2,7 +2,6 @@
 
 import 'rc-slider/assets/index.css';
 
-import { pathOr } from 'ramda';
 import Slider from 'rc-slider';
 import React from 'react';
 
@@ -10,7 +9,6 @@ import Checkbox from '@/shared/Checkbox/Checkbox';
 import {
   getColorNameFromHex,
   isHexColor,
-  COLOR_MAP,
 } from '@/constants/colors';
 
 // Color mapping from color names to Tailwind classes
@@ -159,7 +157,9 @@ const SidebarFilters: React.FC<SidebarFiltersProps> = ({
             allowCross={false}
             onChange={(_input: number | number[]) => {
               const range = _input as number[];
-              onPriceChange([range[0], range[1]]);
+              if (range.length >= 2 && typeof range[0] === 'number' && typeof range[1] === 'number') {
+                onPriceChange([range[0], range[1]]);
+              }
             }}
           />
         </div>

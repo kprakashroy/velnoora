@@ -102,7 +102,7 @@ const ProductsDisplay: React.FC<ProductsDisplayProps> = ({
     });
   }, [initialProducts, currentPriceFilter, selectedSizes, selectedColors]);
 
-  const handleSizeChange = (size: string, checked: boolean) => {
+  const handleSizeChange = (size: string, _checked: boolean) => {
     dispatch(toggleSize(size));
   };
 

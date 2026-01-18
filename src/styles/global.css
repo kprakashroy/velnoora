@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.container {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 1rem/* 16px */;
+  padding-left: 1rem/* 16px */;
+}
+@media (min-width: 640px) {
+  .container {
+      max-width: 640px;
+  }
+}
+@media (min-width: 768px) {
+  .container {
+      max-width: 768px;
+  }
+}
+@media (min-width: 1024px) {
+  .container {
+      max-width: 1024px;
+  }
+}
+@media (min-width: 1280px) {
+  .container {
+      max-width: 1280px;
+      padding-right: 40px;
+      padding-left: 40px;
+  }
+}
+@media (min-width: 1536px) {
+  .container {
+      max-width: 1536px;
+      padding-right: 70px;
+      padding-left: 70px;
+  }
+}
+
+.transitionEffect {
+  @apply transition ease-in-out hover:-translate-y-1 delay-150 hover:scale-95 duration-300
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  position: relative;
+}
+
+.loader:before {
+  content: '';
+  width: 48px;
+  height: 5px;
+  background: #fa6e1f;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  border-radius: 50%;
+  animation: shadow324 0.5s linear infinite;
+}
+
+.loader:after {
+  content: '';
+  width: 100%;
+  height: 100%;
+  background: #fa6e1f;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 4px;
+  animation: jump7456 0.5s linear infinite;
+}
+
+@keyframes jump7456 {
+  15% {
+    border-bottom-right-radius: 3px;
+  }
+
+  25% {
+    transform: translateY(9px) rotate(22.5deg);
+  }
+
+  50% {
+    transform: translateY(18px) scale(1, .9) rotate(45deg);
+    border-bottom-right-radius: 40px;
+  }
+
+  75% {
+    transform: translateY(9px) rotate(67.5deg);
+  }
+
+  100% {
+    transform: translateY(0) rotate(90deg);
+  }
+}
+
+@keyframes shadow324 {
+
+  0%,
+    100% {
+    transform: scale(1, 1);
+  }
+
+  50% {
+    transform: scale(1.2, 1);
+  }
+}
+
+.hiddenScrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hiddenScrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.glassmorphism {
+  @apply bg-neutral-400 bg-clip-padding backdrop-filter backdrop-blur-md bg-opacity-10
+}
+
+.overlay {
+  background: linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.4) 100%);
+}

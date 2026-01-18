@@ -58,6 +58,7 @@ const getProductData = async (id: string) => {
       shots,
       availableSizes: p.available_sizes || undefined,
       availableColors: p.available_colors || undefined,
+      category: p.category || null,
       reviews: 0,
     } as any;
   }
@@ -98,7 +99,10 @@ const SingleProductPage = async (props: Props) => {
         />
       </div>
       <div className="mb-28">
-        <SectionMoreProducts />
+        <SectionMoreProducts 
+          category={pathOr(null, ['category'], selectedProduct)}
+          currentProductId={props.params.productId}
+        />
       </div>
     </div>
   );

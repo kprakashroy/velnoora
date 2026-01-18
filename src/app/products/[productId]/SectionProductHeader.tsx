@@ -59,11 +59,14 @@ const SectionProductHeader: FC<SectionProductHeaderProps> = ({
           <Variant sizes="w-8 h-8" colors={availableColors} />
         </div>
 
-        <div className="mt-5 flex items-center gap-5">
-          <ButtonPrimary href="/checkout" className="w-full">
-            Buy this product
-          </ButtonPrimary>
-        </div>
+        {/* Buy button temporarily hidden */}
+        {false && (
+          <div className="mt-5 flex items-center gap-5">
+            <ButtonPrimary href="/checkout" className="w-full">
+              Buy this product
+            </ButtonPrimary>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -52,7 +52,8 @@ const MainNav = () => {
           </Link>
         )}
 
-        <CartSideBar />
+        {/* CartSideBar temporarily hidden */}
+        {false && <CartSideBar />}
       </div>
 
       <div className="lg:hidden">

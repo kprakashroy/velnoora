@@ -675,5 +675,5 @@ export const blogs: BlogType[] = [
 export const productsCollection = {
   heading: 'Collections',
   description:
-    'Lorem ipsum dolor sit amet consectetur adipiscing elit facilisi pellentesque cursus eget morbi sagittis sagittis.',
+    'Discover our exquisite collection of elegant traditional suits and contemporary modest wear for women. Explore sophisticated designs that blend timeless elegance with modern fashion trends.',
 };

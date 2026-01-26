@@ -1,21 +1,35 @@
+'use client';
+
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import React from 'react';
 
 import { productsCollection } from '@/data/content';
 import hero from '@/images/productsHero.jpg';
 import ButtonSecondary from '@/shared/Button/ButtonSecondary';
 import Heading from '@/shared/Heading/Heading';
-// no server code needed here
 
 interface Props {
   categories: string[];
   selectedCategory: string;
 }
 
-const SectionProductsHeader = async ({
+const SectionProductsHeader = ({
   categories,
-  selectedCategory,
+  selectedCategory: initialSelectedCategory,
 }: Props) => {
+  const searchParams = useSearchParams();
+  const urlCategory = searchParams.get('category');
+  const selectedCategory = urlCategory || initialSelectedCategory;
+
+  const handleCategoryClick = (category: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('category', category);
+    // Force full page reload to ensure server component re-fetches with new category
+    // This ensures the page structure is respected and data is properly reloaded
+    window.location.href = `/products?${params.toString()}`;
+  };
+
   return (
     <div className="space-y-10">
       <div className="h-[220px] w-full overflow-hidden rounded-2xl">
@@ -23,6 +37,7 @@ const SectionProductsHeader = async ({
           src={hero}
           alt="hero products"
           className="size-full object-cover object-center"
+          priority
         />
       </div>
 
@@ -32,19 +47,18 @@ const SectionProductsHeader = async ({
       <div className="hiddenScrollbar grid grid-cols-5 gap-5 overflow-y-hidden">
         {categories.map((category) => {
           const isActive = selectedCategory === category;
-          const url = `/products?category=${encodeURIComponent(category)}`;
           return (
-            <a
-              href={url}
+            <ButtonSecondary
               key={category}
-              aria-current={isActive ? 'page' : undefined}
+              onClick={() => handleCategoryClick(category)}
+              type="button"
+              // Note: `ButtonSecondary` renders a <button> already; avoid nesting <button> inside <button>
+              className={`w-full transition-colors !bg-primary ${
+                isActive ? '!border-4 !border-black' : 'border-0'
+              }`}
             >
-              <ButtonSecondary
-                className={`w-full transition-colors ${isActive ? 'border-4 border-orange-500' : ''}`}
-              >
-                {category}
-              </ButtonSecondary>
-            </a>
+              {category}
+            </ButtonSecondary>
           );
         })}
       </div>

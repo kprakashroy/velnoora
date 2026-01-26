@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 
 import ProductCard from '@/components/ProductCard';
 import { getProducts } from '@/lib/api-client';
@@ -21,6 +21,17 @@ interface Props {
   initialProducts: ProductItem[];
 }
 
+// Memoize product mapping function to avoid recreation on each render
+const mapProductToItem = (p: any): ProductItem => ({
+  slug: p.id,
+  productName: p.description || 'Product',
+  coverImage: p.main_image_url || '/preview.jpg',
+  price: Number(p.amount || 0),
+  currency: p.currency || 'USD',
+  availableColors: p.available_colors || undefined,
+  category: p.category || undefined,
+});
+
 const ProductsBrowser = ({
   categories,
   initialCategory,
@@ -32,40 +43,38 @@ const ProductsBrowser = ({
   const [products, setProducts] = useState<ProductItem[]>(initialProducts);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (
-      (!selectedCategory || selectedCategory === '') &&
-      categories.length > 0
-    ) {
-      setSelectedCategory(categories[0] as string);
-    }
-  }, [categories, selectedCategory]);
+  const defaultCategory = useMemo(
+    () => (categories.length > 0 ? categories[0] : ''),
+    [categories],
+  );
 
   useEffect(() => {
-    let ignore = false;
-    const fetchData = async () => {
-      if (!selectedCategory) return;
-      setLoading(true);
-      try {
-        const { products: apiProducts } = await getProducts(
-          undefined,
-          undefined,
-          selectedCategory,
-        );
-        const mapped: ProductItem[] = (apiProducts || []).map((p: any) => ({
-          slug: p.id,
-          productName: p.description || 'Product',
-          coverImage: p.main_image_url || '/preview.jpg',
-          price: Number(p.amount || 0),
-          currency: p.currency || 'USD',
-          availableColors: p.available_colors || undefined,
-          category: p.category || undefined,
-        }));
-        if (!ignore) setProducts(mapped);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
+    if (!selectedCategory && defaultCategory) {
+      setSelectedCategory(defaultCategory);
+    }
+  }, [selectedCategory, defaultCategory]);
+
+  const fetchProducts = useCallback(async (category: string) => {
+    if (!category) return;
+
+    setLoading(true);
+    try {
+      const { products: apiProducts } = await getProducts(
+        undefined,
+        undefined,
+        category,
+      );
+      const mapped: ProductItem[] = (apiProducts || []).map(mapProductToItem);
+      setProducts(mapped);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (
       initialCategory &&
       selectedCategory === initialCategory &&
@@ -74,34 +83,49 @@ const ProductsBrowser = ({
       setProducts(initialProducts);
       return;
     }
-    fetchData();
-    return () => {
-      ignore = true;
-    };
-  }, [selectedCategory, initialCategory, initialProducts]);
+
+    if (selectedCategory && selectedCategory !== initialCategory) {
+      fetchProducts(selectedCategory);
+
+      // No cleanup needed (fetch is not abortable here)
+      return undefined;
+    }
+
+    return undefined;
+  }, [selectedCategory, initialCategory, initialProducts, fetchProducts]);
 
   const countLabel = useMemo(
     () => (loading ? 'Loading…' : `${products.length} items`),
     [loading, products.length],
   );
 
+  const handleCategorySelect = useCallback((category: string) => {
+    setSelectedCategory(category);
+  }, []);
+
+  const categoryButtons = useMemo(
+    () =>
+      categories.map((cat) => (
+        <button
+          key={cat}
+          type="button"
+          onClick={() => handleCategorySelect(cat)}
+          className={`w-full rounded-xl border px-4 py-2 text-center transition-colors bg-primary text-white ${
+            selectedCategory === cat
+              ? 'border-black'
+              : 'border-transparent'
+          }`}
+        >
+          {cat}
+        </button>
+      )),
+    [categories, selectedCategory, handleCategorySelect],
+  );
+
   return (
     <div className="space-y-8">
       <div className="hiddenScrollbar grid grid-cols-2 gap-3 overflow-y-hidden sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setSelectedCategory(cat)}
-            className={`w-full rounded-xl border px-4 py-2 text-center transition-colors ${
-              selectedCategory === cat
-                ? 'border-primary bg-primary text-white'
-                : 'border-neutral-300 bg-white'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {categoryButtons}
       </div>
 
       <div className="flex items-center justify-between">

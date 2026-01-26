@@ -1,13 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { FiEdit, FiTrash2, FiUpload, FiX } from 'react-icons/fi';
 
 import { COLOR_MAP, PRODUCT_COLORS, PRODUCT_SIZES } from '@/constants';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { createProduct, deleteProduct, getProducts, updateProduct, uploadFile } from '@/lib/api-client';
-import { ConfirmationModal } from '@/shared/Modal';
+import { ConfirmationModal, ImageCropModal } from '@/shared/Modal';
 import ButtonPrimary from '@/shared/Button/ButtonPrimary';
 import FormItem from '@/shared/FormItem';
 import Input from '@/shared/Input/Input';
@@ -18,24 +18,17 @@ const AddCollectionPage = () => {
   const router = useRouter();
   const { userProfile, loading: authLoading, user } = useAuthApi();
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<'add' | 'edit'>('add');
-  
-  // Product list state
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
-
-  // Form state
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [category, setCategory] = useState('');
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
   const [availableColors, setAvailableColors] = useState<string[]>([]);
-
-  // Image state
   const [mainImagePreview, setMainImagePreview] = useState<string>('');
   const [mainImageUrl, setMainImageUrl] = useState<string>('');
   const [supportingImages, setSupportingImages] = useState<File[]>([]);
@@ -43,34 +36,31 @@ const AddCollectionPage = () => {
     string[]
   >([]);
   const [supportingImageUrls, setSupportingImageUrls] = useState<string[]>([]);
-
-  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [uploadingImages, setUploadingImages] = useState(false);
-  
-  // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{
     id: string;
     description: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // Size and color dropdown selections
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [showColorDropdown, setShowColorDropdown] = useState(false);
   const [colorSearchTerm, setColorSearchTerm] = useState('');
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string>('');
+  const [cropImageType, setCropImageType] = useState<'main' | 'supporting'>('main');
+  const [pendingSupportingImageIndex, setPendingSupportingImageIndex] = useState<number>(-1);
 
-  // Helper function to render color swatch
-  const renderColorSwatch = (
+  const renderColorSwatch = useCallback((
     colorName: string,
     size: 'small' | 'medium' = 'medium',
   ) => {
     const colorValue =
-      COLOR_MAP[colorName as keyof typeof COLOR_MAP] || '#CCCCCC'; // Fallback to gray if color not found
+      COLOR_MAP[colorName as keyof typeof COLOR_MAP] || '#CCCCCC';
     const sizeClass = size === 'small' ? 'w-4 h-4' : 'w-6 h-6';
 
     return (
@@ -87,10 +77,16 @@ const AddCollectionPage = () => {
         <span>{colorName}</span>
       </div>
     );
-  };
+  }, []);
 
-  // Helper function to render color swatch from hex code
-  const renderColorSwatchFromHex = (
+  const getColorNameFromHex = useCallback((hexCode: string): string => {
+    const colorEntry = Object.entries(COLOR_MAP).find(
+      ([_, hex]) => hex === hexCode,
+    );
+    return colorEntry ? colorEntry[0] : 'Unknown Color';
+  }, []);
+
+  const renderColorSwatchFromHex = useCallback((
     hexCode: string,
     size: 'small' | 'medium' = 'medium',
   ) => {
@@ -109,26 +105,31 @@ const AddCollectionPage = () => {
         <span>{colorName}</span>
       </div>
     );
-  };
+  }, [getColorNameFromHex]);
 
-  // Check if user is admin
   useEffect(() => {
-    // Only redirect if auth is loaded and user is not admin
-    // Don't redirect if userProfile is still loading (null/undefined)
     if (!authLoading && userProfile !== null && !userProfile?.admin) {
       router.push('/');
     }
   }, [authLoading, userProfile, router]);
 
-  // Load products when edit tab is active
   useEffect(() => {
-    if (activeTab === 'edit' && products.length === 0) {
-      loadProducts();
-    }
-  }, [activeTab]);
+    return () => {
+      if (mainImagePreview && mainImagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(mainImagePreview);
+      }
+      supportingImagePreviews.forEach((preview) => {
+        if (preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+      });
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+      }
+    };
+  }, [mainImagePreview, supportingImagePreviews, imageToCrop]);
 
-  // Load products from API
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       setLoadingProducts(true);
       const response = await getProducts();
@@ -139,14 +140,17 @@ const AddCollectionPage = () => {
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, []);
 
-  // Handle product selection for editing
+  useEffect(() => {
+    if (activeTab === 'edit' && products.length === 0) {
+      loadProducts();
+    }
+  }, [activeTab, products.length, loadProducts]);
+
   const handleProductSelect = (product: any) => {
     setSelectedProduct(product);
     setIsEditing(true);
-    
-    // Pre-fill form with product data
     setDescription(product.description || '');
     setPrice(product.amount?.toString() || '');
     setCurrency(product.currency || 'USD');
@@ -157,37 +161,26 @@ const AddCollectionPage = () => {
     setMainImagePreview(product.main_image_url || '');
     setSupportingImageUrls(product.images || []);
     setSupportingImagePreviews(product.images || []);
-    
-    // Clear any existing errors
     setError('');
     setSuccess('');
   };
 
-  // Handle delete button click - show modal
   const handleDeleteClick = (productId: string, productDescription: string) => {
     setProductToDelete({ id: productId, description: productDescription });
     setShowDeleteModal(true);
   };
 
-  // Handle confirmed deletion
   const handleConfirmDelete = async () => {
     if (!productToDelete) return;
 
     try {
       setDeleting(true);
       setError('');
-      
       await deleteProduct(productToDelete.id);
       setSuccess('Product deleted successfully!');
-      
-      // Close modal and reset state
       setShowDeleteModal(false);
       setProductToDelete(null);
-      
-      // Refresh products list
       await loadProducts();
-      
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccess('');
       }, 3000);
@@ -201,7 +194,6 @@ const AddCollectionPage = () => {
     }
   };
 
-  // Handle modal close
   const handleCloseDeleteModal = () => {
     if (!deleting) {
       setShowDeleteModal(false);
@@ -209,8 +201,19 @@ const AddCollectionPage = () => {
     }
   };
 
-  // Reset form to add new product
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
+    if (mainImagePreview && mainImagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(mainImagePreview);
+    }
+    supportingImagePreviews.forEach((preview) => {
+      if (preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    });
+    if (imageToCrop) {
+      URL.revokeObjectURL(imageToCrop);
+    }
+
     setDescription('');
     setPrice('');
     setCurrency('USD');
@@ -226,20 +229,27 @@ const AddCollectionPage = () => {
     setIsEditing(false);
     setError('');
     setSuccess('');
-  };
+    setShowCropModal(false);
+    setImageToCrop('');
+    setPendingSupportingImageIndex(-1);
+  }, [mainImagePreview, supportingImagePreviews, imageToCrop]);
 
-  // Filter colors based on search term
-  const filteredColors = PRODUCT_COLORS.filter((color) =>
-    color.toLowerCase().includes(colorSearchTerm.toLowerCase()),
+  const filteredColors = useMemo(
+    () =>
+      PRODUCT_COLORS.filter((color) =>
+        color.toLowerCase().includes(colorSearchTerm.toLowerCase()),
+      ),
+    [colorSearchTerm],
   );
 
-  // Close color dropdown when clicking outside
   useEffect(() => {
+    if (!showColorDropdown) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (showColorDropdown && !target.closest('.color-dropdown-container')) {
+      if (!target.closest('.color-dropdown-container')) {
         setShowColorDropdown(false);
-        setColorSearchTerm(''); // Clear search when closing
+        setColorSearchTerm('');
       }
     };
 
@@ -249,149 +259,216 @@ const AddCollectionPage = () => {
     };
   }, [showColorDropdown]);
 
-  // Handle main image selection and upload
-  const handleMainImageChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleMainImageChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file');
-      return;
-    }
-
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image size should not exceed 10MB');
-      return;
-    }
-
-    setMainImagePreview(URL.createObjectURL(file));
-    setError('');
-
-    // Upload immediately
-    await uploadMainImage(file);
-  };
-
-  // Upload main image to Supabase storage
-  const uploadMainImage = async (file: File) => {
-    try {
-      setUploadingImages(true);
-
-      const result = await uploadFile(file, 'product-images');
-      setMainImageUrl(result.url);
-    } catch (err: any) {
-      console.error('Error uploading main image:', err);
-      setError(`Failed to upload main image: ${err.message}`);
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  // Handle supporting images selection and upload
-  const handleSupportingImagesChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // Validate files
-    for (const file of files) {
       if (!file.type.startsWith('image/')) {
-        setError('All files must be images');
+        setError('Please select a valid image file');
         return;
       }
+
       if (file.size > 10 * 1024 * 1024) {
-        setError('Each image should not exceed 10MB');
+        setError('Image size should not exceed 10MB');
         return;
       }
+
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+      }
+
+      const imageUrl = URL.createObjectURL(file);
+      setImageToCrop(imageUrl);
+      setCropImageType('main');
+      setShowCropModal(true);
+      setError('');
+      e.target.value = '';
+    },
+    [imageToCrop],
+  );
+
+  const handleMainImageCropComplete = useCallback(
+    async (croppedImageBlob: Blob) => {
+      try {
+        setUploadingImages(true);
+        setError('');
+
+        if (mainImagePreview) {
+          URL.revokeObjectURL(mainImagePreview);
+        }
+
+        const croppedFile = new File([croppedImageBlob], 'cropped-image.jpg', {
+          type: 'image/jpeg',
+        });
+
+        const previewUrl = URL.createObjectURL(croppedImageBlob);
+        setMainImagePreview(previewUrl);
+        const result = await uploadFile(croppedFile, 'product-images');
+        setMainImageUrl(result.url);
+      } catch (err: any) {
+        console.error('Error uploading main image:', err);
+        setError(`Failed to upload main image: ${err.message}`);
+      } finally {
+        setUploadingImages(false);
+      }
+    },
+    [mainImagePreview],
+  );
+
+  const handleSupportingImagesChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          setError('All files must be images');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          setError('Each image should not exceed 10MB');
+          return;
+        }
+      }
+
+      if (imageToCrop) {
+        URL.revokeObjectURL(imageToCrop);
+      }
+
+      const firstFile = files[0];
+      if (!firstFile) return;
+      const imageUrl = URL.createObjectURL(firstFile);
+      setImageToCrop(imageUrl);
+      setCropImageType('supporting');
+      setPendingSupportingImageIndex(supportingImages.length);
+      setShowCropModal(true);
+      setError('');
+
+      if (files.length > 1) {
+        console.log('Multiple files selected, processing first file. Please upload others separately.');
+      }
+
+      e.target.value = '';
+    },
+    [imageToCrop, supportingImages.length],
+  );
+
+  const handleSupportingImageCropComplete = useCallback(
+    async (croppedImageBlob: Blob) => {
+      try {
+        setUploadingImages(true);
+        setError('');
+
+        const croppedFile = new File([croppedImageBlob], 'cropped-image.jpg', {
+          type: 'image/jpeg',
+        });
+
+        const previewUrl = URL.createObjectURL(croppedImageBlob);
+        const targetIndex = pendingSupportingImageIndex;
+        setSupportingImagePreviews((prev) => {
+          // Replace existing image at index (revoke old blob preview if any)
+          if (targetIndex >= 0 && targetIndex < prev.length) {
+            const oldPreview = prev[targetIndex];
+            if (oldPreview && oldPreview.startsWith('blob:')) {
+              URL.revokeObjectURL(oldPreview);
+            }
+            const next = [...prev];
+            next[targetIndex] = previewUrl;
+            return next;
+          }
+          // Append new supporting image
+          return [...prev, previewUrl];
+        });
+        const result = await uploadFile(croppedFile, 'product-images');
+        setSupportingImageUrls((prev) => {
+          if (targetIndex >= 0 && targetIndex < prev.length) {
+            const next = [...prev];
+            next[targetIndex] = result.url;
+            return next;
+          }
+          return [...prev, result.url];
+        });
+        setSupportingImages((prev) => {
+          if (targetIndex >= 0 && targetIndex < prev.length) {
+            const next = [...prev];
+            next[targetIndex] = croppedFile;
+            return next;
+          }
+          return [...prev, croppedFile];
+        });
+      } catch (err: any) {
+        console.error('Error uploading supporting image:', err);
+        setError(`Failed to upload supporting image: ${err.message}`);
+      } finally {
+        setUploadingImages(false);
+      }
+    },
+    [pendingSupportingImageIndex],
+  );
+
+  const handleCropModalClose = useCallback(() => {
+    if (imageToCrop) {
+      URL.revokeObjectURL(imageToCrop);
+    }
+    setShowCropModal(false);
+    setImageToCrop('');
+    setPendingSupportingImageIndex(-1);
+  }, [imageToCrop]);
+
+  const handleCropComplete = useCallback(
+    async (croppedImageBlob: Blob) => {
+      if (cropImageType === 'main') {
+        await handleMainImageCropComplete(croppedImageBlob);
+      } else {
+        await handleSupportingImageCropComplete(croppedImageBlob);
+      }
+      handleCropModalClose();
+    },
+    [cropImageType, handleMainImageCropComplete, handleSupportingImageCropComplete, handleCropModalClose],
+  );
+
+  const removeSupportingImage = useCallback((index: number) => {
+    const previewToRemove = supportingImagePreviews[index];
+    if (previewToRemove && previewToRemove.startsWith('blob:')) {
+      URL.revokeObjectURL(previewToRemove);
     }
 
-    setSupportingImages([...supportingImages, ...files]);
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setSupportingImagePreviews([...supportingImagePreviews, ...previews]);
-    setError('');
+    setSupportingImages((prev) => prev.filter((_, i) => i !== index));
+    setSupportingImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setSupportingImageUrls((prev) => prev.filter((_, i) => i !== index));
+  }, [supportingImagePreviews]);
 
-    // Upload immediately
-    await uploadSupportingImages(files);
-  };
-
-  // Upload supporting images to Supabase storage
-  const uploadSupportingImages = async (files: File[]) => {
-    try {
-      setUploadingImages(true);
-      const uploadPromises = files.map(async (file) => {
-        const result = await uploadFile(file, 'product-images');
-        return result.url;
-      });
-
-      const urls = await Promise.all(uploadPromises);
-      setSupportingImageUrls([...supportingImageUrls, ...urls]);
-    } catch (err: any) {
-      console.error('Error uploading supporting images:', err);
-      setError(`Failed to upload supporting images: ${err.message}`);
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  // Remove supporting image
-  const removeSupportingImage = (index: number) => {
-    const newImages = supportingImages.filter((_, i) => i !== index);
-    const newPreviews = supportingImagePreviews.filter((_, i) => i !== index);
-    const newUrls = supportingImageUrls.filter((_, i) => i !== index);
-
-    setSupportingImages(newImages);
-    setSupportingImagePreviews(newPreviews);
-    setSupportingImageUrls(newUrls);
-  };
-
-  // Add size from dropdown
-  const addSize = () => {
+  const addSize = useCallback(() => {
     if (selectedSize && !availableSizes.includes(selectedSize)) {
-      setAvailableSizes([...availableSizes, selectedSize]);
-      setSelectedSize(''); // Reset dropdown selection
+      setAvailableSizes((prev) => [...prev, selectedSize]);
+      setSelectedSize('');
     }
-  };
+  }, [selectedSize, availableSizes]);
 
-  // Remove size
-  const removeSize = (size: string) => {
-    setAvailableSizes(availableSizes.filter((s) => s !== size));
-  };
+  const removeSize = useCallback((size: string) => {
+    setAvailableSizes((prev) => prev.filter((s) => s !== size));
+  }, []);
 
-  // Add color from dropdown (store hex code, display name)
-  const addColor = () => {
+  const addColor = useCallback(() => {
     if (selectedColor) {
       const hexCode = COLOR_MAP[selectedColor as keyof typeof COLOR_MAP];
       if (hexCode && !availableColors.includes(hexCode)) {
-        setAvailableColors([...availableColors, hexCode]);
-        setSelectedColor(''); // Reset dropdown selection
+        setAvailableColors((prev) => [...prev, hexCode]);
+        setSelectedColor('');
       }
     }
-  };
+  }, [selectedColor, availableColors]);
 
-  // Remove color
-  const removeColor = (hexCode: string) => {
-    setAvailableColors(availableColors.filter((c) => c !== hexCode));
-  };
+  const removeColor = useCallback((hexCode: string) => {
+    setAvailableColors((prev) => prev.filter((c) => c !== hexCode));
+  }, []);
 
-  // Helper function to get color name from hex code
-  const getColorNameFromHex = (hexCode: string): string => {
-    const colorEntry = Object.entries(COLOR_MAP).find(
-      ([_, hex]) => hex === hexCode,
-    );
-    return colorEntry ? colorEntry[0] : 'Unknown Color';
-  };
-
-  // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    // Validation
     if (!description.trim()) {
       setError('Product description is required');
       return;
@@ -420,7 +497,6 @@ const AddCollectionPage = () => {
     try {
       setLoading(true);
 
-      // Insert product into database
       const productData = {
         description: description.trim(),
         amount: parseFloat(price),
@@ -433,24 +509,16 @@ const AddCollectionPage = () => {
       };
 
       if (isEditing && selectedProduct) {
-        // Update existing product
         await updateProduct(selectedProduct.id, productData);
         setSuccess('Product updated successfully!');
-        
-        // Refresh products list
         await loadProducts();
-        
-        // Reset form after a delay
         setTimeout(() => {
           resetForm();
           setActiveTab('edit');
         }, 2000);
       } else {
-        // Create new product
         await createProduct(productData);
         setSuccess('Product added successfully!');
-
-        // Reset form
         setTimeout(() => {
           router.push('/products');
         }, 2000);
@@ -476,13 +544,11 @@ const AddCollectionPage = () => {
     );
   }
 
-  // If not logged in, redirect to login
   if (!user) {
     router.push('/login');
     return null;
   }
 
-  // If profile is loaded but user is not admin, show access denied
   if (userProfile !== null && !userProfile?.admin) {
     return (
       <div className="container flex min-h-screen items-center justify-center">
@@ -509,7 +575,6 @@ const AddCollectionPage = () => {
     );
   }
 
-  // If profile is still loading, show loading state
   if (userProfile === null) {
     return (
       <div className="container flex min-h-screen items-center justify-center">
@@ -533,7 +598,6 @@ const AddCollectionPage = () => {
           {isEditing ? 'Edit Product' : 'Add New Product'}
         </h1>
 
-        {/* Tab Navigation */}
         <div className="mb-8 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             <button
@@ -577,7 +641,6 @@ const AddCollectionPage = () => {
           </div>
         )}
 
-        {/* Product List for Edit Tab */}
         {activeTab === 'edit' && !isEditing && (
           <div className="mb-8">
             <h2 className="mb-4 text-xl font-semibold">Select Product to Edit</h2>
@@ -596,7 +659,6 @@ const AddCollectionPage = () => {
                     key={product.id}
                     className="group relative rounded-lg border border-gray-200 p-4 transition-colors hover:border-primary hover:bg-gray-50"
                   >
-                    {/* Delete Button */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -609,7 +671,6 @@ const AddCollectionPage = () => {
                       <FiTrash2 size={16} />
                     </button>
 
-                    {/* Product Card Content */}
                     <div
                       onClick={() => handleProductSelect(product)}
                       className="cursor-pointer"
@@ -641,11 +702,8 @@ const AddCollectionPage = () => {
           </div>
         )}
 
-        {/* Form */}
         {(activeTab === 'add' || isEditing) && (
-
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Category */}
           <FormItem label="Category *">
             <Input
               type="text"
@@ -657,7 +715,6 @@ const AddCollectionPage = () => {
             />
           </FormItem>
 
-          {/* Description */}
           <FormItem label="Description *">
             <TextArea
               value={description}
@@ -669,7 +726,6 @@ const AddCollectionPage = () => {
             />
           </FormItem>
 
-          {/* Price and Currency */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <FormItem label="Price *">
               <Input
@@ -698,7 +754,6 @@ const AddCollectionPage = () => {
             </FormItem>
           </div>
 
-          {/* Main Image */}
           <FormItem label="Main Product Image *">
             <div className="space-y-4">
               <div className="flex w-full items-center justify-center">
@@ -737,7 +792,6 @@ const AddCollectionPage = () => {
             </div>
           </FormItem>
 
-          {/* Supporting Images */}
           <FormItem label="Supporting Images (Optional)">
             <div className="space-y-4">
               <div className="flex w-full items-center justify-center">
@@ -790,7 +844,6 @@ const AddCollectionPage = () => {
             </div>
           </FormItem>
 
-          {/* Available Sizes */}
           <FormItem label="Available Sizes *">
             <div className="space-y-3">
               <p className="text-gray-600 text-sm">
@@ -841,7 +894,6 @@ const AddCollectionPage = () => {
             </div>
           </FormItem>
 
-          {/* Available Colors */}
           <FormItem label="Available Colors *">
             <div className="space-y-3">
               <p className="text-gray-600 text-sm">
@@ -863,7 +915,6 @@ const AddCollectionPage = () => {
 
                   {showColorDropdown && (
                     <div className="border-gray-300 absolute z-10 mt-1 w-full rounded-md border bg-white shadow-lg">
-                      {/* Search input */}
                       <div className="border-b p-2">
                         <input
                           type="text"
@@ -875,7 +926,6 @@ const AddCollectionPage = () => {
                         />
                       </div>
 
-                      {/* Color options */}
                       <div className="max-h-48 overflow-auto">
                         {filteredColors.length > 0 ? (
                           filteredColors.map((color) => (
@@ -932,7 +982,6 @@ const AddCollectionPage = () => {
             </div>
           </FormItem>
 
-          {/* Submit Button */}
           <div className="flex gap-4 pt-4">
             <ButtonPrimary
               type="submit"
@@ -969,7 +1018,6 @@ const AddCollectionPage = () => {
         </form>
         )}
 
-        {/* Delete Confirmation Modal */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={handleCloseDeleteModal}
@@ -980,6 +1028,15 @@ const AddCollectionPage = () => {
           cancelText="Cancel"
           type="danger"
           isLoading={deleting}
+        />
+
+        <ImageCropModal
+          isOpen={showCropModal}
+          onClose={handleCropModalClose}
+          onCropComplete={handleCropComplete}
+          imageSrc={imageToCrop}
+          aspectRatio={1}
+          title={cropImageType === 'main' ? 'Crop Main Product Image' : 'Crop Supporting Image'}
         />
       </div>
     </div>

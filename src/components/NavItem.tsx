@@ -55,6 +55,28 @@ const NavigationItem: FC<NavigationItemWithRouterProps> = ({ menuItem }) => {
 
   // ===================== MENU MAIN MENU =====================
   const renderMainItem = (item: NavItemType) => {
+    // Force full page reload for Collections and product category links
+    const isProductCategoryLink = item.href === '/products' || item.name === 'Collections';
+    
+    if (isProductCategoryLink) {
+      return (
+        <a
+          rel="noopener noreferrer"
+          className="inline-flex items-center font-medium hover:text-secondary cursor-pointer"
+          href={item.href || '/'}
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = item.href || '/';
+          }}
+        >
+          {item.name}
+          {item.type && (
+            <BsChevronDown className="-mr-1 ml-1 size-4" aria-hidden="true" />
+          )}
+        </a>
+      );
+    }
+    
     return (
       <Link
         rel="noopener noreferrer"
@@ -70,6 +92,29 @@ const NavigationItem: FC<NavigationItemWithRouterProps> = ({ menuItem }) => {
   };
 
   const renderDropdownMenuNavlink = (item: NavItemType) => {
+    // Force full page reload for Collections and product category links
+    const isProductCategoryLink = item.href === '/products' || item.name === 'Collections';
+    
+    if (isProductCategoryLink) {
+      return (
+        <a
+          target={item.targetBlank ? '_blank' : undefined}
+          rel="noopener noreferrer"
+          className="hover flex items-center rounded-md px-4 py-2 font-normal hover:bg-secondary/10 cursor-pointer"
+          href={item.href || ''}
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = item.href || '/';
+          }}
+        >
+          {item.name}
+          {item.type && (
+            <BsChevronDown className="-mr-1 ml-1 size-4" aria-hidden="true" />
+          )}
+        </a>
+      );
+    }
+    
     return (
       <Link
         target={item.targetBlank ? '_blank' : undefined}

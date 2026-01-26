@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('products')
-      .select('*')
+      .select('id, description, amount, currency, category, main_image_url, images, available_sizes, available_colors, created_at')
       .order('created_at', { ascending: false });
 
     if (categoryParam) {
@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check if user is admin
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('admin')

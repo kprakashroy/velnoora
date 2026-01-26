@@ -24,68 +24,128 @@ const NavMobile: React.FC<NavMobileProps> = ({ onClickClose }) => {
   ) => {
     return (
       <ul className="nav-mobile-sub-menu pb-1 pl-6 text-base">
-        {item.children?.map((i) => (
-          <Disclosure key={i.id} as="li">
-            <Link
-              href={{
-                pathname: i.href || undefined,
-              }}
-              className={`mt-0.5 flex rounded-lg pr-4 text-sm hover:bg-neutral-100 ${itemClass}`}
-            >
-              <span
-                className={`py-1 ${!i.children ? 'block w-full' : ''}`}
-                onClick={onClickClose}
-              >
-                {i.name}
-              </span>
-              {i.children && (
-                <span
-                  className="flex grow items-center"
-                  onClick={(e) => e.preventDefault()}
+        {item.children?.map((i) => {
+          // Force full page reload for Collections and product category links
+          const isProductCategoryLink = i.href === '/products' || i.name === 'Collections';
+          
+          return (
+            <Disclosure key={i.id} as="li">
+              {isProductCategoryLink ? (
+                <a
+                  href={i.href || '/'}
+                  className={`mt-0.5 flex rounded-lg pr-4 text-sm hover:bg-neutral-100 cursor-pointer ${itemClass}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClickClose?.();
+                    window.location.href = i.href || '/';
+                  }}
                 >
-                  <Disclosure.Button
-                    as="span"
-                    className="flex grow justify-end"
+                  <span className={`py-1 ${!i.children ? 'block w-full' : ''}`}>
+                    {i.name}
+                  </span>
+                  {i.children && (
+                    <span
+                      className="flex grow items-center"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <Disclosure.Button
+                        as="span"
+                        className="flex grow justify-end"
+                      >
+                        <MdKeyboardArrowDown className="text-xl" />
+                      </Disclosure.Button>
+                    </span>
+                  )}
+                </a>
+              ) : (
+                <Link
+                  href={{
+                    pathname: i.href || undefined,
+                  }}
+                  className={`mt-0.5 flex rounded-lg pr-4 text-sm hover:bg-neutral-100 ${itemClass}`}
+                >
+                  <span
+                    className={`py-1 ${!i.children ? 'block w-full' : ''}`}
+                    onClick={onClickClose}
                   >
-                    <MdKeyboardArrowDown className="text-xl" />
-                  </Disclosure.Button>
-                </span>
+                    {i.name}
+                  </span>
+                  {i.children && (
+                    <span
+                      className="flex grow items-center"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <Disclosure.Button
+                        as="span"
+                        className="flex grow justify-end"
+                      >
+                        <MdKeyboardArrowDown className="text-xl" />
+                      </Disclosure.Button>
+                    </span>
+                  )}
+                </Link>
               )}
-            </Link>
-            {i.children && (
-              <Disclosure.Panel>
-                {renderMenuChild(i, 'pl-3')}
-              </Disclosure.Panel>
-            )}
-          </Disclosure>
-        ))}
+              {i.children && (
+                <Disclosure.Panel>
+                  {renderMenuChild(i, 'pl-3')}
+                </Disclosure.Panel>
+              )}
+            </Disclosure>
+          );
+        })}
       </ul>
     );
   };
 
   const renderItem = (item: NavItemType, index: number) => {
+    // Force full page reload for Collections and product category links
+    const isProductCategoryLink = item.href === '/products' || item.name === 'Collections';
+    
     return (
       <Disclosure key={index} as="li">
-        <Link
-          className="flex w-full items-center rounded-lg px-4 text-sm font-medium uppercase tracking-wide hover:bg-slate-100"
-          href={{
-            pathname: item.href || undefined,
-          }}
-        >
-          <span
-            className={!item.children ? 'block w-full' : ''}
-            onClick={onClickClose}
+        {isProductCategoryLink ? (
+          <a
+            className="flex w-full items-center rounded-lg px-4 text-sm font-medium uppercase tracking-wide hover:bg-slate-100 cursor-pointer"
+            href={item.href || '/'}
+            onClick={(e) => {
+              e.preventDefault();
+              onClickClose?.();
+              window.location.href = item.href || '/';
+            }}
           >
-            {item.name}
-          </span>
-          {item.children && (
-            <span className="block grow" onClick={(e) => e.preventDefault()}>
-              <Disclosure.Button as="span" className="flex grow justify-end">
-                <MdKeyboardArrowDown className="text-xl text-black" />
-              </Disclosure.Button>
+            <span className={!item.children ? 'block w-full' : ''}>
+              {item.name}
             </span>
-          )}
-        </Link>
+            {item.children && (
+              <span className="block grow" onClick={(e) => e.preventDefault()}>
+                <Disclosure.Button as="span" className="flex grow justify-end">
+                  <MdKeyboardArrowDown className="text-xl text-black" />
+                </Disclosure.Button>
+              </span>
+            )}
+          </a>
+        ) : (
+          <Link
+            className="flex w-full items-center rounded-lg px-4 text-sm font-medium uppercase tracking-wide hover:bg-slate-100"
+            href={{
+              pathname: item.href || undefined,
+            }}
+          >
+            <span
+              className={!item.children ? 'block w-full' : ''}
+              onClick={onClickClose}
+            >
+              {item.name}
+            </span>
+            {item.children && (
+              <span className="block grow" onClick={(e) => e.preventDefault()}>
+                <Disclosure.Button as="span" className="flex grow justify-end">
+                  <MdKeyboardArrowDown className="text-xl text-black" />
+                </Disclosure.Button>
+              </span>
+            )}
+          </Link>
+        )}
         {item.children && (
           <Disclosure.Panel>{renderMenuChild(item)}</Disclosure.Panel>
         )}
